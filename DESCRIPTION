@@ -1,0 +1,21 @@
+Package: RintegMET
+Title: Create iDMET Networks from mzTab-M Files
+Version: 0.0.0.9000
+Authors@R:
+    person("Kozo", "Nishida", , "kozo.nishida@gmail.com", role = c("aut", "cre"))
+Description: Reads metabolomics results stored in the mzTab-M format and
+    extracts the information needed to build iDMET networks. Files are
+    parsed with 'RmzTabM'. Currently lists the study variable groups
+    (experimental factors) declared in the metadata section of an mzTab-M
+    file.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+Imports:
+    RmzTabM (>= 0.99.3)
+Suggests:
+    testthat (>= 3.0.0)
+Remotes:
+    RforMassSpectrometry/RmzTabM
+Config/testthat/edition: 3
+Config/roxygen2/version: 8.1.1
