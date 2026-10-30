@@ -1,60 +1,3 @@
-#' Summarize the SML section by study variable as a SummarizedExperiment
-#'
-#' Builds a `SummarizedExperiment` with one row per row of the small molecule
-#' summary (`SML`) section of an mzTab-M file and one column per study variable
-#' (level) of its study variable groups.
-#'
-#' Each assay value is the arithmetic mean of the `abundance_assay[n]` columns
-#' of the assays in the study variable's `-assay_refs`, as in
-#' [sml_fold_change()].
-#'
-#' A sample usually belongs to one level of every study variable group, so the
-#' columns of different groups share samples and are not independent.
-#'
-#' @inheritParams sml_fold_change
-#'
-#' @return A [SummarizedExperiment::SummarizedExperiment] with:
-#'   \describe{
-#'     \item{assay}{One assay, `mean_abundance`.}
-#'     \item{colData}{The data frame returned by [samples_per_group()].}
-#'     \item{rowData}{The `SML` columns `SML_ID`, `database_identifier`,
-#'       `chemical_name` and `uri`, with `null` values as `NA`.}
-#'   }
-#'   Row names are the `SML_ID` values and column names are the study variable
-#'   identifiers, e.g. `"study_variable[10]"`, since level names need not be
-#'   unique across groups.
-#'
-#' @export
-#' @examples
-#' file <- system.file("extdata", "ST000010_AN000025.mztab",
-#'                     package = "RintegMET")
-#' se <- sml_summarized_experiment(file)
-#' se
-#' SummarizedExperiment::colData(se)
-#' SummarizedExperiment::assay(se)[1:3, se$Group == "TGF"]
-sml_summarized_experiment <- function(x, na.rm = TRUE, validate = FALSE) {
-  x <- as_mztab(x, validate)
-  sml <- mztab_sml(x)
-  variables <- RmzTabM::getMtdField(x, "study_variable\\[")
-  groups <- list_study_variable_groups(x)
-  # Same order as the rows of samples_per_group()
-  ids <- as.character(unlist(groups$study_variable_refs))
-  annotation <- sml_annotation(sml)
-
-  means <- vapply(ids, function(id) {
-    study_variable_mean(sml, variables, id, na.rm)
-  }, numeric(nrow(sml)))
-
-  SummarizedExperiment::SummarizedExperiment(
-    assays = list(
-      mean_abundance = matrix(means, nrow = nrow(sml), ncol = length(ids),
-                              dimnames = list(annotation$SML_ID, ids))
-    ),
-    rowData = annotation,
-    colData = samples_per_group(x)
-  )
-}
-
 #' Convert study variable abundances to a SummarizedExperiment
 #'
 #' Builds a `SummarizedExperiment` directly from the values reported in an
@@ -62,14 +5,17 @@ sml_summarized_experiment <- function(x, na.rm = TRUE, validate = FALSE) {
 #' section and one column per `study_variable[n]` of the metadata (`MTD`)
 #' section.
 #'
-#' Unlike [sml_summarized_experiment()], which averages the assays itself, this
-#' function does not compute anything, so the values and which of them are
+#' This function does not compute anything, so the values and which of them are
 #' missing depend on how the file was written. In the example file they are the
 #' means of the available assays; other writers may leave
 #' `abundance_study_variable[n]` as `null` as soon as any one assay of the study
 #' variable is missing.
 #'
-#' @inheritParams list_study_variable_groups
+#' @param x Path to an mzTab-M file, or an `MzTabM` object already read with
+#'   [RmzTabM::readMzTabM()].
+#' @param validate Passed to [RmzTabM::readMzTabM()] when `x` is a path.
+#'   Validation downloads and runs the jmzTab-M validator, so it is off by
+#'   default.
 #'
 #' @return A [SummarizedExperiment::SummarizedExperiment] with:
 #'   \describe{

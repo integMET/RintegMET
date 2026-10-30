@@ -38,8 +38,7 @@ section and one column per \code{study_variable[n]} of the metadata (\code{MTD})
 section.
 }
 \details{
-Unlike \code{\link[=sml_summarized_experiment]{sml_summarized_experiment()}}, which averages the assays itself, this
-function does not compute anything, so the values and which of them are
+This function does not compute anything, so the values and which of them are
 missing depend on how the file was written. In the example file they are the
 means of the available assays; other writers may leave
 \code{abundance_study_variable[n]} as \code{null} as soon as any one assay of the study

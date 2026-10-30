@@ -5,11 +5,8 @@ Authors@R:
     person("Kozo", "Nishida", , "kozo.nishida@gmail.com", role = c("aut", "cre"))
 Description: Reads metabolomics results stored in the mzTab-M format and
     extracts the information needed to build iDMET networks. Files are
-    parsed with 'RmzTabM'. Lists the study variable groups (experimental
-    factors) declared in the metadata section of an mzTab-M file, counts
-    their samples, computes fold-changes between study variables, and
-    summarizes small molecule abundances by study variable as a
-    'SummarizedExperiment'.
+    parsed with 'RmzTabM'. Converts the small molecule abundances reported
+    for each study variable of an mzTab-M file to a 'SummarizedExperiment'.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
