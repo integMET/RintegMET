@@ -25,6 +25,9 @@ parameter.}
 \item{type}{Name of the \code{-type} parameter, e.g.
 \code{"categorical variable"}.}
 \item{datatype}{Value of \code{-datatype}, e.g. \code{"xsd:string"}.}
+\item{n_samples}{Number of distinct samples across the group's study
+variables, through \code{-assay_refs} and \code{assay[n]-sample_ref}. An assay
+without a \code{-sample_ref} counts as a sample of its own.}
 \item{study_variable_refs}{List column of the study variable
 identifiers in \code{-study_variable_refs}.}
 \item{study_variables}{List column of the names of those study
