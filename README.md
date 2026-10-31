@@ -55,6 +55,25 @@ later in `se` over the one that comes earlier, `rowData` is that of `se`, and
 fc <- study_variable_fold_change(se)
 ```
 
+`populate_compact_identifier()` adds a `compact_identifier` column to `colData`
+with the [identifiers.org](https://identifiers.org/) compact identifier of the
+study, read from the `uri[n]` fields of the file's metadata section. It recognizes
+Metabolomics Workbench studies, such as `mw.study:ST000010`, and warns and gives
+`NA` if the fields do not name a single study.
+
+```r
+fc <- populate_compact_identifier(fc, file)
+```
+
+`populate_analysis_id()` adds an `analysis_id` column to `colData` with the
+Metabolomics Workbench analysis, read from the `custom[n]` fields of the file's
+metadata section, such as `AN000025`. It warns and gives `NA` if the fields do
+not name a single analysis.
+
+```r
+fc <- populate_analysis_id(fc, file)
+```
+
 `populate_inchi_key()` fills the `opt_global_inchi_key` column of `rowData` by
 looking up each molecule's `uri`, a KEGG or PubChem compound page, in PubChem. It
 needs internet access, keeps existing values, and warns about URIs that give no
