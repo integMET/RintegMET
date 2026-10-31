@@ -45,6 +45,16 @@ se
 #>   description
 ```
 
+`study_variable_fold_change()` compares the study variables of each variable,
+taken from `colData(se)$description`, and returns a `SummarizedExperiment` with
+one column per pair. The `fold_change` assay holds the study variable that comes
+later in `se` over the one that comes earlier, `rowData` is that of `se`, and
+`colData` holds the variable and the two study variables of each pair.
+
+```r
+fc <- study_variable_fold_change(se)
+```
+
 `populate_inchi_key()` fills the `opt_global_inchi_key` column of `rowData` by
 looking up each molecule's `uri`, a KEGG or PubChem compound page, in PubChem. It
 needs internet access, keeps existing values, and warns about URIs that give no

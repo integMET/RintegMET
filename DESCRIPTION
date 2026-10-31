@@ -7,7 +7,8 @@ Description: Reads metabolomics results stored in the mzTab-M format and
     extracts the information needed to build iDMET networks. Files are
     parsed with 'RmzTabM'. Converts the small molecule abundances reported
     for each study variable of an mzTab-M file to a 'SummarizedExperiment',
-    and populates InChIKeys from the molecules' URIs through 'PubChem'.
+    computes fold-changes between the study variables of each variable, and
+    populates InChIKeys from the molecules' URIs through 'PubChem'.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
