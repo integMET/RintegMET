@@ -44,3 +44,12 @@ se
 #> colData names(5): name assay_refs average_function variation_function
 #>   description
 ```
+
+`populate_inchi_key()` fills the `opt_global_inchi_key` column of `rowData` by
+looking up each molecule's `uri`, a KEGG or PubChem compound page, in PubChem. It
+needs internet access, keeps existing values, and warns about URIs that give no
+single InChIKey.
+
+```r
+se <- populate_inchi_key(se)
+```
