@@ -102,16 +102,23 @@ kegg_cid <- function(kegg_id) {
 }
 
 # InChIKeys named by compound identifier; compounds without one are left out.
+# PubChem rejects a whole request for one invalid identifier, so a rejected batch
+# is split until only the invalid identifiers are left out.
 cid_inchi_keys <- function(cids) {
   body <- pubchem_get(sprintf("compound/cid/%s/property/InChIKey/CSV",
                               paste(cids, collapse = ",")))
   if (is.na(body)) {
-    return(character(0))
+    if (length(cids) == 1L) {
+      return(character(0))
+    }
+    half <- seq_len(length(cids) %/% 2L)
+    return(c(cid_inchi_keys(cids[half]), cid_inchi_keys(cids[-half])))
   }
   properties <- utils::read.csv(text = body, colClasses = "character")
   keys <- properties$InChIKey
   names(keys) <- properties$CID
-  keys
+  # A compound without an InChIKey can be listed with an empty value
+  keys[nzchar(keys)]
 }
 
 # Body of a PubChem PUG REST response. PubChem answers an identifier it does not

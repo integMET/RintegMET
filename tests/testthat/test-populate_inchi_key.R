@@ -126,6 +126,33 @@ test_that("a batch that PubChem does not know leaves its URIs NA", {
   expect_equal(inchi_keys(se), NA_character_)
 })
 
+test_that("an invalid compound does not lose the rest of its batch", {
+  pubchem <- fake_pubchem()
+  # PubChem rejects a whole request with an invalid identifier in it
+  rejecting_get <- function(path, ...) {
+    if (grepl("\\b999\\b", path)) NA_character_ else pubchem$get(path, ...)
+  }
+  local_mocked_bindings(pubchem_get = rejecting_get)
+
+  expect_warning(
+    se <- populate_inchi_key(make_se(pubchem_uri(c(11, 999, 22, 55)))),
+    "1 of 4 URIs"
+  )
+
+  expect_equal(inchi_keys(se), c("AAA-N", NA, "BBB-N", "CCC-N"))
+})
+
+test_that("a compound listed with an empty InChIKey stays NA", {
+  local_mocked_bindings(pubchem_get = function(...) {
+    "\"CID\",\"InChIKey\"\n11,\"AAA-N\"\n22,\n"
+  })
+
+  expect_warning(se <- populate_inchi_key(make_se(pubchem_uri(c(11, 22)))),
+                 "1 of 2 URIs")
+
+  expect_equal(inchi_keys(se), c("AAA-N", NA))
+})
+
 test_that("input without the expected contents is an error", {
   expect_error(populate_inchi_key(data.frame()), "SummarizedExperiment")
 
