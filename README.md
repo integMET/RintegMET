@@ -92,3 +92,13 @@ leaves any other identifier `NA` with a warning.
 ```r
 fc <- populate_inchi_key_from_cmpdid(fc)
 ```
+
+`populate_inchi_key_from_database_identifier()` does the same from the
+`database_identifier` column of `rowData`, as in files converted from MetaboLights.
+It recognizes ChEBI entities, such as `CHEBI:28300`, KEGG compounds, HMDB
+metabolites, PubChem compounds and CAS Registry Numbers, and leaves any other value
+`NA` with a warning, including several identifiers in one value.
+
+```r
+fc <- populate_inchi_key_from_database_identifier(fc)
+```
