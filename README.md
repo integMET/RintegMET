@@ -58,8 +58,9 @@ fc <- study_variable_fold_change(se)
 `populate_compact_identifier()` adds a `compact_identifier` column to `colData`
 with the [identifiers.org](https://identifiers.org/) compact identifier of the
 study, read from the `uri[n]` fields of the file's metadata section. It recognizes
-Metabolomics Workbench studies, such as `mw.study:ST000010`, and warns and gives
-`NA` if the fields do not name a single study.
+Metabolomics Workbench studies, such as `mw.study:ST000010`, and MetaboLights
+studies, such as `metabolights:MTBLS1066`, and warns and gives `NA` if the fields
+do not name a single study.
 
 ```r
 fc <- populate_compact_identifier(fc, file)
