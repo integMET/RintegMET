@@ -23,6 +23,11 @@ for (entry in listing) {
   se <- study_variable_summarized_experiment(file)
   fc <- study_variable_fold_change(se)
   fc <- populate_compact_identifier(fc, file)
+  # The chemical names of MTBLS135 do not match its database identifiers, so a key
+  # could not be trusted to describe the row it is on.
+  if (!startsWith(entry$name, "MTBLS135_")) {
+    fc <- populate_inchi_key_from_database_identifier(fc)
+  }
   save(fc, file = file.path(out_dir, sub("\\.mztab$", "_fc.RData", entry$name)))
 
   values <- SummarizedExperiment::assay(fc)
