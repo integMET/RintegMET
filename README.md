@@ -83,3 +83,12 @@ single InChIKey.
 ```r
 se <- populate_inchi_key(se)
 ```
+
+`populate_inchi_key_from_cmpdid()` does the same from the `opt_global_cmpdid`
+column of `rowData`, for files that report their molecules there. It recognizes
+KEGG compounds, such as `C00041`, and HMDB metabolites, such as `HMDB00688`, and
+leaves any other identifier `NA` with a warning.
+
+```r
+fc <- populate_inchi_key_from_cmpdid(fc)
+```
