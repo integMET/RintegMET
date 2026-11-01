@@ -74,6 +74,55 @@ populate_inchi_key_from_cmpdid <- function(se) {
   fill_inchi_keys(se, "opt_global_cmpdid", cmpdid_cid, "identifiers")
 }
 
+#' Populate InChIKeys from the database identifiers of small molecules
+#'
+#' Fills the `opt_global_inchi_key` column of `rowData(se)` by looking up each
+#' molecule's `database_identifier` in
+#' [PubChem](https://pubchem.ncbi.nlm.nih.gov/), for example in the result of
+#' [study_variable_fold_change()] for a file converted from MetaboLights. Use it
+#' for files that report their molecules in this column rather than in `uri`, which
+#' [populate_inchi_key()] reads.
+#'
+#' These forms of identifier are recognized:
+#'
+#' * A ChEBI entity, e.g. `CHEBI:28300`, a KEGG compound, e.g. `C00041` or
+#'   `KEGG:C00041`, and an HMDB metabolite, e.g. `HMDB00688` or `HMDB:HMDB00688`,
+#'   each give the compound that PubChem standardized from the substance deposited
+#'   by that database.
+#' * A PubChem compound, e.g. `PubChem:5950`. A bare number, e.g. `5950`, is taken
+#'   to be one too.
+#' * A CAS Registry Number, e.g. `56-41-7`, gives the compound that PubChem finds
+#'   for that name, if it finds only one.
+#'
+#' Any other value is left `NA` without a request. That includes several
+#' identifiers in one value, e.g. `CHEBI:16108|CHEBI:57597`, because they may name
+#' different compounds. Rows that share an identifier get the same key.
+#'
+#' This function needs internet access. It sends the identifiers to PubChem, at no
+#' more than five requests per second as PubChem asks. Network and server errors
+#' stop with an error rather than leaving values missing.
+#'
+#' @param se A `SummarizedExperiment` whose `rowData` has a `database_identifier`
+#'   column.
+#'
+#' @return `se` with `opt_global_inchi_key` in its `rowData`. Existing values are
+#'   kept, and the column is added if it is absent. Rows without an identifier stay
+#'   `NA`, and identifiers that give no single InChIKey stay `NA` with a warning.
+#'
+#' @export
+#' @examples
+#' \donttest{
+#' se <- SummarizedExperiment::SummarizedExperiment(
+#'   rowData = data.frame(database_identifier = c("CHEBI:28300", "HMDB00688"))
+#' )
+#' se <- populate_inchi_key_from_database_identifier(se)
+#' SummarizedExperiment::rowData(se)
+#' }
+populate_inchi_key_from_database_identifier <- function(se) {
+  fill_inchi_keys(se, "database_identifier", database_identifier_cid,
+                  "identifiers")
+}
+
 # Fills the missing InChIKeys of `se` from the identifiers in `column`, which
 # `to_cid` turns into PubChem compound identifiers. `label` names them in warnings.
 fill_inchi_keys <- function(se, column, to_cid, label) {
@@ -143,6 +192,22 @@ cmpdid_cid <- function(id) {
   NA_character_
 }
 
+# PubChem compound identifier of a database_identifier value, NA if it is unknown
+# or not recognized.
+database_identifier_cid <- function(id) {
+  id <- sub("^(KEGG|HMDB):", "", id)
+  if (grepl("^CHEBI:[0-9]+$", id)) {
+    return(source_cid("ChEBI", id))
+  }
+  if (grepl("^(PubChem:)?[0-9]+$", id)) {
+    return(sub("^PubChem:", "", id))
+  }
+  if (grepl("^[0-9]{2,7}-[0-9]{2}-[0-9]$", id)) {
+    return(single_cid(pubchem_get(sprintf("compound/name/%s/cids/TXT", id))))
+  }
+  cmpdid_cid(id)
+}
+
 kegg_cid <- function(kegg_id) {
   source_cid("KEGG", kegg_id)
 }
@@ -157,9 +222,13 @@ hmdb_cid <- function(hmdb_id) {
 # Compound standardized from the substance deposited by a source. A substance
 # without a single compound gives NA rather than a guess.
 source_cid <- function(source, id) {
-  body <- pubchem_get(sprintf("substance/sourceid/%s/%s/cids/TXT",
-                              utils::URLencode(source, reserved = TRUE), id),
-                      cids_type = "standardized")
+  single_cid(pubchem_get(sprintf("substance/sourceid/%s/%s/cids/TXT",
+                                 utils::URLencode(source, reserved = TRUE), id),
+                         cids_type = "standardized"))
+}
+
+# The compound identifier in a PubChem response, NA unless there is exactly one.
+single_cid <- function(body) {
   if (is.na(body)) {
     return(NA_character_)
   }

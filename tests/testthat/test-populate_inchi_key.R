@@ -25,7 +25,11 @@ fake_pubchem <- function() {
       if (grepl("/KEGG/C00002/", path)) return("22\n")
       if (grepl("/KEGG/C00003/", path)) return("33\n44\n")
       if (grepl("/HMDB0000688/", path)) return("55\n")
+      if (grepl("/ChEBI/CHEBI:15377/", path)) return("22\n")
       if (startsWith(path, "substance/")) return(NA_character_)
+      if (grepl("^compound/name/7732-18-5/", path)) return("11\n")
+      if (grepl("^compound/name/50-00-0/", path)) return("11\n22\n")
+      if (startsWith(path, "compound/name/")) return(NA_character_)
       cids <- strsplit(sub("^compound/cid/([^/]+)/.*$", "\\1", path), ",")[[1]]
       known <- c("11" = "AAA-N", "22" = "BBB-N", "55" = "CCC-N")
       cids <- intersect(cids, names(known))
@@ -229,6 +233,72 @@ test_that("compound identifier input without the expected contents is an error",
                "SummarizedExperiment")
   expect_error(populate_inchi_key_from_cmpdid(make_se("C00001")),
                "opt_global_cmpdid")
+})
+
+make_database_identifier_se <- function(ids, ...) {
+  rows <- as.character(seq_along(ids))
+  SummarizedExperiment::SummarizedExperiment(
+    assays = list(abundance = matrix(1, nrow = length(ids), ncol = 1,
+                                     dimnames = list(rows, "study_variable[1]"))),
+    rowData = data.frame(SML_ID = rows, database_identifier = ids, ...,
+                         row.names = rows, stringsAsFactors = FALSE)
+  )
+}
+
+test_that("each form of database identifier gives an InChIKey", {
+  pubchem <- fake_pubchem()
+  local_mocked_bindings(pubchem_get = pubchem$get)
+
+  ids <- c("CHEBI:15377", "C00001", "KEGG:C00001", "HMDB00688", "HMDB:HMDB00688",
+           "PubChem:55", "22", "7732-18-5", NA)
+  se <- populate_inchi_key_from_database_identifier(
+    make_database_identifier_se(ids)
+  )
+
+  expect_equal(inchi_keys(se), c("BBB-N", "AAA-N", "AAA-N", "CCC-N", "CCC-N",
+                                 "CCC-N", "BBB-N", "AAA-N", NA))
+})
+
+test_that("database identifiers keep existing values and share lookups", {
+  pubchem <- fake_pubchem()
+  local_mocked_bindings(pubchem_get = pubchem$get)
+
+  se <- populate_inchi_key_from_database_identifier(
+    make_database_identifier_se(c("C00001", "C00002", "C00002"),
+                                opt_global_inchi_key = c("KEEP-N", NA, NA))
+  )
+
+  expect_equal(inchi_keys(se), c("KEEP-N", "BBB-N", "BBB-N"))
+  expect_false(any(grepl("C00001", pubchem$requests())))
+  expect_equal(sum(grepl("C00002", pubchem$requests())), 1)
+})
+
+test_that("database identifiers without a single InChIKey stay NA with a warning", {
+  ids <- c("CHEBI:15377",              # found
+           "CHEBI:99999",              # unknown to PubChem
+           "CHEBI:16108|CHEBI:57597",  # several identifiers in one value
+           "CSID 2338433",             # database that is not recognized
+           "50-00-0",                  # CAS number with two compounds
+           "1-11-1")                   # CAS number unknown to PubChem
+  pubchem <- fake_pubchem()
+  local_mocked_bindings(pubchem_get = pubchem$get)
+
+  expect_warning(
+    se <- populate_inchi_key_from_database_identifier(
+      make_database_identifier_se(ids)
+    ),
+    "5 of 6 identifiers"
+  )
+
+  expect_equal(inchi_keys(se), c("BBB-N", rep(NA, 5)))
+  expect_false(any(grepl("CSID|\\|", pubchem$requests())))
+})
+
+test_that("database identifier input without the expected contents is an error", {
+  expect_error(populate_inchi_key_from_database_identifier(data.frame()),
+               "SummarizedExperiment")
+  expect_error(populate_inchi_key_from_database_identifier(make_se("C00001")),
+               "database_identifier")
 })
 
 test_that("pubchem_get() encodes the HMDB source name", {
