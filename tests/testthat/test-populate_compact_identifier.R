@@ -7,6 +7,10 @@ workbench_uri <- function(study) {
          "?Mode=Study&StudyID=", study)
 }
 
+metabolights_uri <- function(study) {
+  paste0("https://www.ebi.ac.uk/metabolights/", study)
+}
+
 # Copy of the example file with its uri[n] fields replaced.
 file_with_uris <- function(uris) {
   lines <- readLines(example_file())
@@ -71,12 +75,24 @@ test_that("the study is found among other URIs", {
                "mw.study:ST000123")
 })
 
+test_that("a MetaboLights study page gives its study", {
+  fc <- make_fc()
+  file <- file_with_uris(metabolights_uri("MTBLS1066"))
+
+  expect_equal(populate_compact_identifier(fc, file)$compact_identifier,
+               rep("metabolights:MTBLS1066", ncol(fc)))
+})
+
 test_that("URIs without a single study give NA with a warning", {
   fc <- make_fc()
   cases <- list(
     "https://example.org/data?StudyID=ST000010",
     "https://www.metabolomicsworkbench.org/data/?StudyID=PR000010",
-    c(workbench_uri("ST000010"), workbench_uri("ST000011"))
+    c(workbench_uri("ST000010"), workbench_uri("ST000011")),
+    "https://example.org/metabolights/MTBLS1066",
+    metabolights_uri("MTBLC15355"),
+    c(metabolights_uri("MTBLS1"), metabolights_uri("MTBLS2")),
+    c(workbench_uri("ST000010"), metabolights_uri("MTBLS1"))
   )
   for (uris in cases) {
     expect_warning(result <- populate_compact_identifier(fc, file_with_uris(uris)),
@@ -96,6 +112,12 @@ test_that("URI variants give the study and no URIs give NA", {
       "http://metabolomicsworkbench.org/data/x.php?StudyID=ST000010&Mode=Study"
     ),
     "mw.study:ST000010"
+  )
+  expect_equal(uri_compact_identifier("http://ebi.ac.uk/metabolights/MTBLS17/"),
+               "metabolights:MTBLS17")
+  expect_equal(
+    uri_compact_identifier(paste0(metabolights_uri("MTBLS17"), "/files")),
+    "metabolights:MTBLS17"
   )
   expect_identical(uri_compact_identifier(character(0)), NA_character_)
 })

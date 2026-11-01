@@ -32,10 +32,13 @@ The study is taken from the \code{uri[n]} fields of the metadata (\code{MTD}) se
 Metabolomics Workbench study page, e.g.
 \verb{https://www.metabolomicsworkbench.org/data/DRCCMetadata.php?Mode=Study&StudyID=ST000010},
 gives \code{mw.study:ST000010}, which resolves at
-\verb{https://identifiers.org/mw.study:ST000010}. Every column of \code{se} gets the same
-value because a file reports one study; the identifier refers to the whole
+\verb{https://identifiers.org/mw.study:ST000010}. A MetaboLights study page, e.g.
+\verb{https://www.ebi.ac.uk/metabolights/MTBLS1066}, gives
+\code{metabolights:MTBLS1066}, which resolves at
+\verb{https://identifiers.org/metabolights:MTBLS1066}. Every column of \code{se} gets the
+same value because a file reports one study; the identifier refers to the whole
 study rather than to the analysis in the file, which
-\code{\link[=populate_analysis_id]{populate_analysis_id()}} adds.
+\code{\link[=populate_analysis_id]{populate_analysis_id()}} adds for Metabolomics Workbench.
 }
 \examples{
 file <- system.file("extdata", "ST000010_AN000025.mztab",

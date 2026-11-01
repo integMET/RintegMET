@@ -24,7 +24,8 @@ fake_pubchem <- function() {
       if (grepl("/KEGG/C00001/", path)) return("11\n")
       if (grepl("/KEGG/C00002/", path)) return("22\n")
       if (grepl("/KEGG/C00003/", path)) return("33\n44\n")
-      if (grepl("/KEGG/", path)) return(NA_character_)
+      if (grepl("/HMDB0000688/", path)) return("55\n")
+      if (startsWith(path, "substance/")) return(NA_character_)
       cids <- strsplit(sub("^compound/cid/([^/]+)/.*$", "\\1", path), ",")[[1]]
       known <- c("11" = "AAA-N", "22" = "BBB-N", "55" = "CCC-N")
       cids <- intersect(cids, names(known))
@@ -126,12 +127,117 @@ test_that("a batch that PubChem does not know leaves its URIs NA", {
   expect_equal(inchi_keys(se), NA_character_)
 })
 
+test_that("an invalid compound does not lose the rest of its batch", {
+  pubchem <- fake_pubchem()
+  # PubChem rejects a whole request with an invalid identifier in it
+  rejecting_get <- function(path, ...) {
+    if (grepl("\\b999\\b", path)) NA_character_ else pubchem$get(path, ...)
+  }
+  local_mocked_bindings(pubchem_get = rejecting_get)
+
+  expect_warning(
+    se <- populate_inchi_key(make_se(pubchem_uri(c(11, 999, 22, 55)))),
+    "1 of 4 URIs"
+  )
+
+  expect_equal(inchi_keys(se), c("AAA-N", NA, "BBB-N", "CCC-N"))
+})
+
+test_that("a compound listed with an empty InChIKey stays NA", {
+  local_mocked_bindings(pubchem_get = function(...) {
+    "\"CID\",\"InChIKey\"\n11,\"AAA-N\"\n22,\n"
+  })
+
+  expect_warning(se <- populate_inchi_key(make_se(pubchem_uri(c(11, 22)))),
+                 "1 of 2 URIs")
+
+  expect_equal(inchi_keys(se), c("AAA-N", NA))
+})
+
 test_that("input without the expected contents is an error", {
   expect_error(populate_inchi_key(data.frame()), "SummarizedExperiment")
 
   se <- make_se("https://www.kegg.jp/entry/C00001")
   SummarizedExperiment::rowData(se)$uri <- NULL
   expect_error(populate_inchi_key(se), "uri")
+})
+
+make_cmpdid_se <- function(ids, ...) {
+  rows <- as.character(seq_along(ids))
+  SummarizedExperiment::SummarizedExperiment(
+    assays = list(abundance = matrix(1, nrow = length(ids), ncol = 1,
+                                     dimnames = list(rows, "study_variable[1]"))),
+    rowData = data.frame(SML_ID = rows, opt_global_cmpdid = ids, ...,
+                         row.names = rows, stringsAsFactors = FALSE)
+  )
+}
+
+test_that("KEGG and HMDB compound identifiers give InChIKeys", {
+  pubchem <- fake_pubchem()
+  local_mocked_bindings(pubchem_get = pubchem$get)
+
+  se <- populate_inchi_key_from_cmpdid(
+    make_cmpdid_se(c("C00001", "HMDB0000688", NA, "C00002"))
+  )
+
+  expect_equal(inchi_keys(se), c("AAA-N", "CCC-N", NA, "BBB-N"))
+})
+
+test_that("five digit HMDB identifiers are requested in the seven digit form", {
+  pubchem <- fake_pubchem()
+  local_mocked_bindings(pubchem_get = pubchem$get)
+
+  se <- populate_inchi_key_from_cmpdid(make_cmpdid_se("HMDB00688"))
+
+  expect_equal(inchi_keys(se), "CCC-N")
+  expect_true(any(grepl("/HMDB0000688/", pubchem$requests())))
+})
+
+test_that("compound identifiers keep existing values and share lookups", {
+  pubchem <- fake_pubchem()
+  local_mocked_bindings(pubchem_get = pubchem$get)
+
+  se <- populate_inchi_key_from_cmpdid(
+    make_cmpdid_se(c("C00001", "C00002", "C00002"),
+                   opt_global_inchi_key = c("KEEP-N", NA, NA))
+  )
+
+  expect_equal(inchi_keys(se), c("KEEP-N", "BBB-N", "BBB-N"))
+  expect_false(any(grepl("C00001", pubchem$requests())))
+  expect_equal(sum(grepl("C00002", pubchem$requests())), 1)
+})
+
+test_that("compound identifiers without a single InChIKey stay NA with a warning", {
+  ids <- c("C00001",       # found
+           "C00003",       # substance with two compounds
+           "C00004",       # unknown to PubChem
+           "HMDB9999999",  # unknown to PubChem
+           "HMDB123",      # neither form of HMDB identifier
+           "BA109")        # in-house identifier
+  pubchem <- fake_pubchem()
+  local_mocked_bindings(pubchem_get = pubchem$get)
+
+  expect_warning(se <- populate_inchi_key_from_cmpdid(make_cmpdid_se(ids)),
+                 "5 of 6 identifiers")
+
+  expect_equal(inchi_keys(se), c("AAA-N", rep(NA, 5)))
+  expect_false(any(grepl("BA109|HMDB123/", pubchem$requests())))
+})
+
+test_that("compound identifier input without the expected contents is an error", {
+  expect_error(populate_inchi_key_from_cmpdid(data.frame()),
+               "SummarizedExperiment")
+  expect_error(populate_inchi_key_from_cmpdid(make_se("C00001")),
+               "opt_global_cmpdid")
+})
+
+test_that("pubchem_get() encodes the HMDB source name", {
+  httr2::local_mocked_responses(function(req) {
+    expect_match(req$url, "/sourceid/Human%20Metabolome%20Database%20")
+    httr2::response(200L, body = charToRaw("55\n"))
+  })
+
+  expect_equal(hmdb_cid("HMDB00688"), "55")
 })
 
 test_that("pubchem_get() returns the body of a successful response", {
